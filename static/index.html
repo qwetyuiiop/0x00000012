@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>任务控制中心</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  <style>
+    body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 30px; font-family: system-ui, -apple-system, sans-serif; }
+    .card { border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; }
+    .card-header { background: #0d6efd; color: white; font-weight: bold; }
+    .btn-primary { background: #0d6efd; border: none; }
+    .btn-primary:hover { background: #0b5ed7; }
+    .table { border-radius: 10px; overflow: hidden; }
+    .modal-content { border-radius: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="card-header text-center py-4">
+        <h3>任务控制中心</h3>
+        <small>轻松管理教室电脑的定时任务</small>
+      </div>
+      <div class="card-body p-4">
+        <button class="btn btn-primary btn-lg w-100 mb-4" data-bs-toggle="modal" data-bs-target="#taskModal">
+          + 添加新任务
+        </button>
+
+        <table class="table table-hover table-striped" id="taskTable">
+          <thead class="table-dark">
+            <tr>
+              <th>ID</th>
+              <th>名称</th>
+              <th>每天执行时间</th>
+              <th>类型</th>
+              <th>参数</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框 -->
+  <div class="modal fade" id="taskModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">编辑任务</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="taskForm">
+            <div class="mb-3">
+              <label class="form-label fw-bold">任务 ID（唯一，必填）</label>
+              <input type="text" class="form-control" name="id" required placeholder="例如: remind-noon">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">任务名称</label>
+              <input type="text" class="form-control" name="name" required placeholder="例如: 中午弹窗提醒">
+            </div>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">执行小时</label>
+                <select class="form-select" name="hour" required>
+                  <option value="">请选择小时</option>
+                  ${Array(24).fill(0).map((_,i)=>`<option value="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}</option>`).join('')}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">执行分钟</label>
+                <select class="form-select" name="minute" required>
+                  <option value="">请选择分钟</option>
+                  ${[0,5,10,15,20,25,30,35,40,45,50,55].map(m=>`<option value="${String(m).padStart(2,'0')}">${String(m).padStart(2,'0')}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">任务类型</label>
+              <select class="form-select" name="type" id="taskType" required onchange="toggleFields()">
+                <option value="wallpaper_lock">锁定默认壁纸</option>
+                <option value="wallpaper_reset">解锁壁纸（允许修改）</option>
+                <option value="msgbox">弹出全屏消息</option>
+                <option value="exec_cmd">执行系统命令</option>
+                <option value="update_config">更新被控端配置（地址 & Token）</option>
+              </select>
+            </div>
+            <div class="mb-3" id="payloadGroup">
+              <label class="form-label fw-bold">参数（Payload）</label>
+              <textarea class="form-control" name="payload" rows="3" placeholder="例如：午休时间到啦～ 放下手机吧！"></textarea>
+            </div>
+            <div id="configGroup" style="display:none;">
+              <div class="mb-3">
+                <label class="form-label fw-bold">新远程 API 地址</label>
+                <input type="url" class="form-control" name="config_remote_url" placeholder="http://your-vps-ip:8080/api/tasks">
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-bold">新认证 Token</label>
+                <input type="text" class="form-control" name="config_auth_token" placeholder="例如：new-secret-456">
+              </div>
+              <div class="alert alert-info small">
+                保存后，被控端下次拉取任务时会自动更新配置
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+          <button type="button" class="btn btn-primary" id="saveTaskBtn">保存任务</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TOKEN = 'secret123';  // ← 替换成你启动时设置的 -token 值
+    const API_BASE = '/api/tasks';
+
+    function loadTasks() {
+      fetch(API_BASE, {
+        headers: { 'Authorization': `Bearer ${TOKEN}` }
+      })
+      .then(r => r.json())
+      .then(data => {
+        const tbody = document.querySelector('#taskTable tbody');
+        tbody.innerHTML = '';
+        data.forEach(t => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${t.id}</td>
+            <td>${t.name}</td>
+            <td>${t.schedule || '未设置'}</td>
+            <td><span class="badge bg-info">${t.type}</span></td>
+            <td>${t.payload || (t.config ? '更新配置' : '')}</td>
+            <td>
+              <button class="btn btn-sm btn-warning edit-btn" data-id="${t.id}">编辑</button>
+              <button class="btn btn-sm btn-danger delete-btn" data-id="${t.id}">删除</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      });
+    }
+
+    function toggleFields() {
+      const type = document.getElementById('taskType').value;
+      document.getElementById('payloadGroup').style.display = type === 'update_config' ? 'none' : 'block';
+      document.getElementById('configGroup').style.display = type === 'update_config' ? 'block' : 'none';
+    }
+
+    document.getElementById('saveTaskBtn').onclick = () => {
+      const form = document.getElementById('taskForm');
+      const fd = new FormData(form);
+      const data = Object.fromEntries(fd);
+
+      // 处理时间
+      const hour = data.hour || '00';
+      const mi
